@@ -1,7 +1,7 @@
 namespace minecraftNPC {
 
     // =========================
-    // 💰 EMERALD SYSTEM
+    // 💰 EMERALDS
     // =========================
     let emeralds = 0
 
@@ -18,11 +18,10 @@ namespace minecraftNPC {
     }
 
     // =========================
-    // 💬 DIALOGUE SYSTEM
+    // 💬 DIALOGUE
     // =========================
-    export function showDialogue(text: string, duration: number = 2000) {
+    export function talk(text: string) {
         game.showLongText(text, DialogLayout.Bottom)
-        pause(duration)
     }
 
     // =========================
@@ -35,109 +34,95 @@ namespace minecraftNPC {
         Librarian
     }
 
-    function professionName(p: Profession): string {
-        switch (p) {
-            case Profession.Farmer: return "Farmer"
-            case Profession.Blacksmith: return "Blacksmith"
-            case Profession.Trader: return "Trader"
-            case Profession.Librarian: return "Librarian"
-        }
+    function getProfessionName(p: Profession): string {
+        if (p == Profession.Farmer) return "Farmer"
+        if (p == Profession.Blacksmith) return "Blacksmith"
+        if (p == Profession.Trader) return "Trader"
+        return "Librarian"
     }
 
     // =========================
-    // 🧭 SIMPLE PATHFINDING AI
+    // 🧑 VILLAGER STORAGE
     // =========================
-    function moveToward(sprite: Sprite, target: Sprite, speed: number) {
-        let dx = target.x - sprite.x
-        let dy = target.y - sprite.y
-        let mag = Math.sqrt(dx * dx + dy * dy)
-
-        if (mag > 0) {
-            sprite.vx = (dx / mag) * speed
-            sprite.vy = (dy / mag) * speed
-        }
-    }
+    let villagers: Sprite[] = []
+    let professions: Profession[] = []
 
     // =========================
-    // 🧑 VILLAGER NPC
+    // 🧭 AI UPDATE LOOP (GLOBAL)
     // =========================
-    export class Villager extends sprites.ExtendableSprite {
+    game.onUpdate(function () {
 
-        profession: Profession
-        tradingOpen: boolean = false
+        for (let i = 0; i < villagers.length; i++) {
+            let v = villagers[i]
 
-        constructor(img: Image, profession: Profession) {
-            super(img)
-
-            this.profession = profession
-            this.setKind(SpriteKind.Enemy)
-            this.setStayInScreen(true)
-
-            game.onUpdate(() => {
-                this.aiLoop()
-            })
-        }
-
-        aiLoop() {
-            // wander slightly
-            if (Math.percentChance(3)) {
-                this.vx = randint(-30, 30)
-                this.vy = randint(-30, 30)
+            // random wandering
+            if (Math.percentChance(2)) {
+                v.vx = randint(-30, 30)
+                v.vy = randint(-30, 30)
             }
 
-            // follow player if close
+            // simple player follow
             let player = sprites.allOfKind(SpriteKind.Player)[0]
-            if (player && Math.abs(player.x - this.x) < 60 && Math.abs(player.y - this.y) < 60) {
-                moveToward(this, player, 20)
-            }
-        }
+            if (player) {
+                let dx = player.x - v.x
+                let dy = player.y - v.y
 
-        // =========================
-        // 💬 INTERACTION
-        // =========================
-        talk() {
-            minecraftNPC.showDialogue(
-                "I am a " + professionName(this.profession),
-                1500
-            )
-        }
-
-        // =========================
-        // 🛒 TRADING UI
-        // =========================
-        trade() {
-            if (this.tradingOpen) return
-            this.tradingOpen = true
-
-            if (this.profession == Profession.Trader) {
-
-                minecraftNPC.showDialogue("Trade: 5 emeralds for reward?", 1000)
-
-                game.showLongText("Press A to trade\nPress B to cancel", DialogLayout.Center)
-
-                controller.A.onEvent(ControllerButtonEvent.Pressed, () => {
-                    if (emeralds >= 5) {
-                        removeEmeralds(5)
-                        minecraftNPC.showDialogue("Deal done!", 1000)
-                    } else {
-                        minecraftNPC.showDialogue("Not enough emeralds!", 1000)
+                if (Math.abs(dx) < 60 && Math.abs(dy) < 60) {
+                    let mag = Math.sqrt(dx * dx + dy * dy)
+                    if (mag > 0) {
+                        v.vx = (dx / mag) * 25
+                        v.vy = (dy / mag) * 25
                     }
-                    this.tradingOpen = false
-                })
-
-                controller.B.onEvent(ControllerButtonEvent.Pressed, () => {
-                    this.tradingOpen = false
-                })
+                }
             }
         }
-    }
+    })
 
     // =========================
     // 🧑 SPAWN VILLAGER
     // =========================
-    export function spawnVillager(img: Image, profession: Profession): Villager {
-        let v = new Villager(img, profession)
+    export function spawnVillager(img: Image, profession: Profession): Sprite {
+
+        let v = sprites.create(img, SpriteKind.Enemy)
         v.setPosition(randint(20, 140), randint(20, 100))
+        v.setStayInScreen(true)
+
+        villagers.push(v)
+        professions.push(profession)
+
         return v
+    }
+
+    // =========================
+    // 💬 TALK TO VILLAGER
+    // =========================
+    export function talkTo(v: Sprite) {
+        let index = villagers.indexOf(v)
+        if (index >= 0) {
+            talk("I am a " + getProfessionName(professions[index]))
+        }
+    }
+
+    // =========================
+    // 🛒 TRADE SYSTEM
+    // =========================
+    export function trade(v: Sprite) {
+        let index = villagers.indexOf(v)
+        if (index < 0) return
+
+        let prof = professions[index]
+
+        if (prof == Profession.Trader) {
+            game.showLongText("Trade: 5 emeralds for reward?\nPress A = yes", DialogLayout.Center)
+
+            controller.A.onEvent(ControllerButtonEvent.Pressed, function () {
+                if (emeralds >= 5) {
+                    emeralds -= 5
+                    talk("Trade complete!")
+                } else {
+                    talk("Need more emeralds!")
+                }
+            })
+        }
     }
 }
