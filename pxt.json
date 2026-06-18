@@ -1,10 +1,11 @@
 {
-    "name": "custom-ai-npcs",
+    "name": "minecraft-npc-ai",
     "version": "0.0.1",
-    "description": "Adds Wandering Trader and Bouncing AI to MakeCode Arcade",
+    "description": "Villagers with trading, emerald currency, professions, dialogue, and AI",
     "dependencies": {
         "device": "*",
-        "core": "*"
+        "core": "*",
+        "sprites": "*"
     },
     "files": [
         "main.ts"
