@@ -1,7 +1,7 @@
 {
     "name": "minecraft-npc-ai",
-    "version": "0.0.1",
-    "description": "Villagers with trading, emerald currency, professions, dialogue, and AI",
+    "version": "0.0.2",
+    "description": "Working villager AI system for MakeCode Arcade",
     "dependencies": {
         "device": "*",
         "core": "*",
